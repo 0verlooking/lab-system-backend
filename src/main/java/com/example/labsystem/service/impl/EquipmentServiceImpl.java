@@ -1,0 +1,79 @@
+package com.example.labsystem.service.impl;
+
+import com.example.labsystem.domain.lab.Equipment;
+import com.example.labsystem.domain.lab.Lab;
+import com.example.labsystem.dto.request.EquipmentCreateRequest;
+import com.example.labsystem.dto.request.EquipmentUpdateRequest;
+import com.example.labsystem.dto.response.EquipmentResponse;
+import com.example.labsystem.exception.NotFoundException;
+import com.example.labsystem.mapper.EquipmentMapper;
+import com.example.labsystem.repository.EquipmentRepository;
+import com.example.labsystem.repository.LabRepository;
+import com.example.labsystem.service.EquipmentService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class EquipmentServiceImpl implements EquipmentService {
+
+    private final EquipmentRepository equipmentRepository;
+    private final LabRepository labRepository;
+    private final EquipmentMapper equipmentMapper;
+
+    @Override
+    public List<EquipmentResponse> getAll() {
+        return equipmentRepository.findAll()
+                .stream()
+                .map(equipmentMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<EquipmentResponse> getByLab(Long labId) {
+        return equipmentRepository.findByLabId(labId)
+                .stream()
+                .map(equipmentMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public EquipmentResponse getById(Long id) {
+        Equipment equipment = equipmentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Equipment not found with id = " + id));
+        return equipmentMapper.toResponse(equipment);
+    }
+
+    @Override
+    public EquipmentResponse create(EquipmentCreateRequest request) {
+        Lab lab = labRepository.findById(request.getLabId())
+                .orElseThrow(() -> new NotFoundException("Lab not found with id = " + request.getLabId()));
+
+        Equipment equipment = equipmentMapper.toEntity(request, lab);
+        Equipment saved = equipmentRepository.save(equipment);
+        return equipmentMapper.toResponse(saved);
+    }
+
+    @Override
+    public EquipmentResponse update(Long id, EquipmentUpdateRequest request) {
+        Equipment equipment = equipmentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Equipment not found with id = " + id));
+
+        Lab lab = labRepository.findById(request.getLabId())
+                .orElseThrow(() -> new NotFoundException("Lab not found with id = " + request.getLabId()));
+
+        equipmentMapper.updateEntity(equipment, request, lab);
+        Equipment saved = equipmentRepository.save(equipment);
+        return equipmentMapper.toResponse(saved);
+    }
+
+    @Override
+    public void delete(Long id) {
+        if (!equipmentRepository.existsById(id)) {
+            throw new NotFoundException("Equipment not found with id = " + id);
+        }
+        equipmentRepository.deleteById(id);
+    }
+}
