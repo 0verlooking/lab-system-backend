@@ -6,11 +6,16 @@ import com.example.labsystem.dto.response.ReservationResponse;
 import com.example.labsystem.service.ReservationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Контролер для роботи з резервац іями (аналог OrdersController з microlab_v2).
+ */
 @RestController
 @RequestMapping("/api/reservations")
 @RequiredArgsConstructor
@@ -20,7 +25,30 @@ public class ReservationController {
 
     @PostMapping
     public ResponseEntity<ReservationResponse> create(@Valid @RequestBody ReservationCreateRequest request) {
-        return ResponseEntity.ok(reservationService.create(request));
+        ReservationResponse response = reservationService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Схвалити резервацію (аналог approveOrder з microlab_v2).
+     * Тільки ADMIN може схвалювати.
+     */
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ReservationResponse> approve(@PathVariable Long id) {
+        ReservationResponse response = reservationService.approve(id);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Відхилити резервацію.
+     * Тільки ADMIN може відхиляти.
+     */
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ReservationResponse> reject(@PathVariable Long id) {
+        ReservationResponse response = reservationService.reject(id);
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}/status")
@@ -40,11 +68,20 @@ public class ReservationController {
     }
 
     /**
-     * Усі резервації (для ролі ADMIN / LAB_MANAGER – перевіряється в SecurityConfig).
+     * Усі резервації (для ролі ADMIN).
      */
     @GetMapping
     public ResponseEntity<List<ReservationResponse>> getAll() {
         return ResponseEntity.ok(reservationService.allReservations());
+    }
+
+    /**
+     * Резервації що очікують на схвалення (аналог fetchOrders з microlab_v2 з фільтром PENDING).
+     */
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ReservationResponse>> getPending() {
+        return ResponseEntity.ok(reservationService.getPendingReservations());
     }
 
     @DeleteMapping("/{id}")

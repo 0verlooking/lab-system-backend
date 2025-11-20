@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -21,7 +22,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
-@EnableWebSecurity       // << БЕЗ EnableMethodSecurity
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -44,9 +46,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/labs/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/labs/**").hasRole("ADMIN")
 
-                        // при бажанні так само можна описати equipment/reservations
+                        // Equipment та Reservations
                         .requestMatchers("/api/equipment/**").authenticated()
                         .requestMatchers("/api/reservations/**").authenticated()
+
+                        // LabWorks
+                        .requestMatchers("/api/labworks/**").authenticated()
 
                         // решта – неважливо
                         .anyRequest().permitAll()
