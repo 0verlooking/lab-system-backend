@@ -27,7 +27,7 @@ public class EquipmentServiceImpl implements EquipmentService {
     public List<EquipmentResponse> getAll() {
         return equipmentRepository.findAll()
                 .stream()
-                .map(equipmentMapper::toResponse)
+                .map(EquipmentMapper::toResponse)
                 .toList();
     }
 
@@ -35,7 +35,7 @@ public class EquipmentServiceImpl implements EquipmentService {
     public List<EquipmentResponse> getByLab(Long labId) {
         return equipmentRepository.findByLabId(labId)
                 .stream()
-                .map(equipmentMapper::toResponse)
+                .map(EquipmentMapper::toResponse)
                 .toList();
     }
 
@@ -43,7 +43,7 @@ public class EquipmentServiceImpl implements EquipmentService {
     public EquipmentResponse getById(Long id) {
         Equipment equipment = equipmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Equipment not found with id = " + id));
-        return equipmentMapper.toResponse(equipment);
+        return EquipmentMapper.toResponse(equipment);
     }
 
     @Override
@@ -53,7 +53,7 @@ public class EquipmentServiceImpl implements EquipmentService {
 
         Equipment equipment = equipmentMapper.toEntity(request, lab);
         Equipment saved = equipmentRepository.save(equipment);
-        return equipmentMapper.toResponse(saved);
+        return EquipmentMapper.toResponse(saved);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class EquipmentServiceImpl implements EquipmentService {
 
         equipmentMapper.updateEntity(equipment, request, lab);
         Equipment saved = equipmentRepository.save(equipment);
-        return equipmentMapper.toResponse(saved);
+        return EquipmentMapper.toResponse(saved);
     }
 
     @Override
