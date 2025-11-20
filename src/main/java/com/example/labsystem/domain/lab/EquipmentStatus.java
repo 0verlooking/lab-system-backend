@@ -1,7 +1,11 @@
 package com.example.labsystem.domain.lab;
 
+/**
+ * Статус доступності обладнання (аналог availability з microlab_v2).
+ */
 public enum EquipmentStatus {
-    AVAILABLE,     // доступне
-    RESERVED,      // заброньоване
-    OUT_OF_ORDER   // несправне
+    AVAILABLE,   // Доступне для використання
+    IN_USE,      // Використовується
+    MAINTENANCE, // На обслуговуванні
+    BROKEN       // Зламане
 }

@@ -3,10 +3,16 @@ package com.example.labsystem.config;
 import com.example.labsystem.domain.lab.Equipment;
 import com.example.labsystem.domain.lab.EquipmentStatus;
 import com.example.labsystem.domain.lab.Lab;
+import com.example.labsystem.domain.labwork.LabWork;
+import com.example.labsystem.domain.labwork.LabWorkStatus;
+import com.example.labsystem.domain.reservation.Reservation;
+import com.example.labsystem.domain.reservation.ReservationStatus;
 import com.example.labsystem.domain.user.User;
 import com.example.labsystem.domain.user.UserRole;
 import com.example.labsystem.repository.EquipmentRepository;
 import com.example.labsystem.repository.LabRepository;
+import com.example.labsystem.repository.LabWorkRepository;
+import com.example.labsystem.repository.ReservationRepository;
 import com.example.labsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +20,17 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Ініціалізує базу даних тестовими даними при запуску додатку.
- * Застосовує патерн Command (CommandLineRunner).
+ * Створює дані згідно з логікою microlab_v2:
+ * - Users (аналог auth)
+ * - LabWorks (аналог Projects)
+ * - Equipment (аналог Components з availability та link)
+ * - Reservations (аналог Orders з можливістю approve)
  */
 @Slf4j
 @Component
@@ -26,15 +40,19 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final LabRepository labRepository;
     private final EquipmentRepository equipmentRepository;
+    private final LabWorkRepository labWorkRepository;
+    private final ReservationRepository reservationRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
-        log.info("Initializing test data...");
+        log.info("Initializing test data (microlab_v2 logic)...");
 
         initUsers();
         initLabs();
         initEquipment();
+        initLabWorks();
+        initReservations();
 
         log.info("Test data initialization completed!");
     }
@@ -56,6 +74,15 @@ public class DataInitializer implements CommandLineRunner {
             student.setRole(UserRole.STUDENT);
             userRepository.save(student);
             log.info("Created student user: student/student123");
+        }
+
+        if (userRepository.findByUsername("researcher").isEmpty()) {
+            User researcher = new User();
+            researcher.setUsername("researcher");
+            researcher.setPassword(passwordEncoder.encode("researcher123"));
+            researcher.setRole(UserRole.STUDENT);
+            userRepository.save(researcher);
+            log.info("Created researcher user: researcher/researcher123");
         }
     }
 
@@ -89,32 +116,156 @@ public class DataInitializer implements CommandLineRunner {
     private void initEquipment() {
         if (equipmentRepository.count() == 0) {
             Lab lab1 = labRepository.findAll().get(0);
+            Lab lab2 = labRepository.findAll().get(1);
 
+            // Обладнання з documentationLink (аналог link з microlab_v2)
             Equipment eq1 = Equipment.builder()
-                    .name("Dell OptiPlex 7090")
-                    .inventoryNumber("PC-2024-001")
+                    .name("Oscilloscope Tektronix TDS2024C")
+                    .inventoryNumber("OSC-2024-001")
                     .status(EquipmentStatus.AVAILABLE)
-                    .lab(lab1)
+                    .lab(lab2)
+                    .description("4-канальний цифровий осцилограф, 200 MHz")
+                    .documentationLink("https://www.tek.com/oscilloscope/tds2024c")
                     .build();
             equipmentRepository.save(eq1);
 
             Equipment eq2 = Equipment.builder()
-                    .name("HP ProDesk 600")
-                    .inventoryNumber("PC-2024-002")
+                    .name("Multimeter Fluke 87V")
+                    .inventoryNumber("MM-2024-002")
                     .status(EquipmentStatus.AVAILABLE)
-                    .lab(lab1)
+                    .lab(lab2)
+                    .description("Цифровий мультиметр промислового класу")
+                    .documentationLink("https://www.fluke.com/87v")
                     .build();
             equipmentRepository.save(eq2);
 
             Equipment eq3 = Equipment.builder()
-                    .name("Lenovo ThinkCentre")
+                    .name("Dell OptiPlex 7090")
                     .inventoryNumber("PC-2024-003")
-                    .status(EquipmentStatus.MAINTENANCE)
+                    .status(EquipmentStatus.IN_USE)
                     .lab(lab1)
+                    .description("Настільний комп'ютер для розробки")
+                    .documentationLink("https://www.dell.com/optiplex7090")
                     .build();
             equipmentRepository.save(eq3);
 
-            log.info("Created 3 equipment items");
+            Equipment eq4 = Equipment.builder()
+                    .name("Function Generator Agilent 33220A")
+                    .inventoryNumber("FG-2024-004")
+                    .status(EquipmentStatus.MAINTENANCE)
+                    .lab(lab2)
+                    .description("Генератор функцій 20 MHz")
+                    .documentationLink("https://www.keysight.com/33220A")
+                    .build();
+            equipmentRepository.save(eq4);
+
+            Equipment eq5 = Equipment.builder()
+                    .name("Power Supply TTi PL330DP")
+                    .inventoryNumber("PS-2024-005")
+                    .status(EquipmentStatus.BROKEN)
+                    .lab(lab2)
+                    .description("Двоканальний лабораторний блок живлення")
+                    .documentationLink("https://www.aimtti.com/PL330DP")
+                    .build();
+            equipmentRepository.save(eq5);
+
+            log.info("Created 5 equipment items with documentation links");
+        }
+    }
+
+    private void initLabWorks() {
+        if (labWorkRepository.count() == 0) {
+            User researcher = userRepository.findByUsername("researcher")
+                    .orElse(userRepository.findAll().get(0));
+
+            List<Equipment> equipment = equipmentRepository.findAll();
+
+            // LabWork 1 (аналог Project з microlab_v2)
+            LabWork lw1 = LabWork.builder()
+                    .title("Дослідження характеристик осцилографа")
+                    .description("Лабораторна робота присвячена вивченню принципів роботи цифрового осцилографа та вимірюванню параметрів сигналів")
+                    .author(researcher)
+                    .requiredEquipment(List.of(equipment.get(0), equipment.get(1)))
+                    .status(LabWorkStatus.PUBLISHED)
+                    .build();
+            labWorkRepository.save(lw1);
+
+            // LabWork 2
+            LabWork lw2 = LabWork.builder()
+                    .title("Аналіз частотних характеристик")
+                    .description("Вивчення частотних характеристик електричних кіл за допомогою генератора функцій")
+                    .author(researcher)
+                    .requiredEquipment(List.of(equipment.get(3)))
+                    .status(LabWorkStatus.PUBLISHED)
+                    .build();
+            labWorkRepository.save(lw2);
+
+            // LabWork 3 (draft)
+            LabWork lw3 = LabWork.builder()
+                    .title("Програмування мікроконтролерів")
+                    .description("Основи програмування мікроконтролерів Arduino")
+                    .author(researcher)
+                    .requiredEquipment(List.of(equipment.get(2)))
+                    .status(LabWorkStatus.DRAFT)
+                    .build();
+            labWorkRepository.save(lw3);
+
+            log.info("Created 3 lab works");
+        }
+    }
+
+    private void initReservations() {
+        if (reservationRepository.count() == 0) {
+            User student = userRepository.findByUsername("student")
+                    .orElse(userRepository.findAll().get(1));
+            User admin = userRepository.findByUsername("admin")
+                    .orElse(userRepository.findAll().get(0));
+
+            Lab lab = labRepository.findAll().get(1); // Physics Lab
+            LabWork labWork = labWorkRepository.findAll().get(0);
+            List<Equipment> equipment = equipmentRepository.findAll();
+
+            // Reservation 1 - PENDING (аналог Order який очікує approve)
+            Reservation r1 = Reservation.builder()
+                    .lab(lab)
+                    .user(student)
+                    .labWork(labWork)
+                    .equipment(List.of(equipment.get(0), equipment.get(1)))
+                    .startTime(LocalDateTime.now().plusDays(2))
+                    .endTime(LocalDateTime.now().plusDays(2).plusHours(3))
+                    .purpose("Виконання лабораторної роботи №1")
+                    .status(ReservationStatus.PENDING)
+                    .build();
+            reservationRepository.save(r1);
+
+            // Reservation 2 - APPROVED
+            Reservation r2 = Reservation.builder()
+                    .lab(lab)
+                    .user(student)
+                    .labWork(labWork)
+                    .equipment(new ArrayList<>(List.of(equipment.get(0))))
+                    .startTime(LocalDateTime.now().plusDays(5))
+                    .endTime(LocalDateTime.now().plusDays(5).plusHours(2))
+                    .purpose("Повторне вимірювання для звіту")
+                    .status(ReservationStatus.APPROVED)
+                    .approvedBy(admin)
+                    .approvedAt(LocalDateTime.now().minusHours(1))
+                    .build();
+            reservationRepository.save(r2);
+
+            // Reservation 3 - PENDING
+            Reservation r3 = Reservation.builder()
+                    .lab(lab)
+                    .user(student)
+                    .equipment(new ArrayList<>(List.of(equipment.get(3))))
+                    .startTime(LocalDateTime.now().plusDays(7))
+                    .endTime(LocalDateTime.now().plusDays(7).plusHours(4))
+                    .purpose("Дослідження генератора функцій")
+                    .status(ReservationStatus.PENDING)
+                    .build();
+            reservationRepository.save(r3);
+
+            log.info("Created 3 reservations (2 pending, 1 approved)");
         }
     }
 }

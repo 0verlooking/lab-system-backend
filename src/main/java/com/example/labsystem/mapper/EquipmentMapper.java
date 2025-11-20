@@ -26,12 +26,14 @@ public class EquipmentMapper {
         equipment.setLab(lab);
     }
 
-    public EquipmentResponse toResponse(Equipment equipment) {
+    public static EquipmentResponse toResponse(Equipment equipment) {
         return EquipmentResponse.builder()
                 .id(equipment.getId())
                 .name(equipment.getName())
                 .inventoryNumber(equipment.getInventoryNumber())
                 .status(equipment.getStatus())
+                .documentationLink(equipment.getDocumentationLink())
+                .description(equipment.getDescription())
                 .labId(
                         equipment.getLab() != null ? equipment.getLab().getId() : null
                 )
