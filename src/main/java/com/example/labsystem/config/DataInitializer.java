@@ -180,12 +180,19 @@ public class DataInitializer implements CommandLineRunner {
 
             List<Equipment> equipment = equipmentRepository.findAll();
 
+            if (equipment.isEmpty()) {
+                log.warn("No equipment found, skipping lab works initialization");
+                return;
+            }
+
             // LabWork 1 (аналог Project з microlab_v2)
             LabWork lw1 = LabWork.builder()
                     .title("Дослідження характеристик осцилографа")
                     .description("Лабораторна робота присвячена вивченню принципів роботи цифрового осцилографа та вимірюванню параметрів сигналів")
                     .author(researcher)
-                    .requiredEquipment(List.of(equipment.get(0), equipment.get(1)))
+                    .requiredEquipment(equipment.size() >= 2
+                            ? List.of(equipment.get(0), equipment.get(1))
+                            : List.of(equipment.get(0)))
                     .status(LabWorkStatus.PUBLISHED)
                     .build();
             labWorkRepository.save(lw1);
@@ -195,7 +202,9 @@ public class DataInitializer implements CommandLineRunner {
                     .title("Аналіз частотних характеристик")
                     .description("Вивчення частотних характеристик електричних кіл за допомогою генератора функцій")
                     .author(researcher)
-                    .requiredEquipment(List.of(equipment.get(3)))
+                    .requiredEquipment(equipment.size() >= 4
+                            ? List.of(equipment.get(3))
+                            : List.of(equipment.get(0)))
                     .status(LabWorkStatus.PUBLISHED)
                     .build();
             labWorkRepository.save(lw2);
@@ -205,12 +214,14 @@ public class DataInitializer implements CommandLineRunner {
                     .title("Програмування мікроконтролерів")
                     .description("Основи програмування мікроконтролерів Arduino")
                     .author(researcher)
-                    .requiredEquipment(List.of(equipment.get(2)))
+                    .requiredEquipment(equipment.size() >= 3
+                            ? List.of(equipment.get(2))
+                            : List.of(equipment.get(equipment.size() > 1 ? 1 : 0)))
                     .status(LabWorkStatus.DRAFT)
                     .build();
             labWorkRepository.save(lw3);
 
-            log.info("Created 3 lab works");
+            log.info("Created 3 lab works with {} equipment items available", equipment.size());
         }
     }
 
@@ -221,16 +232,35 @@ public class DataInitializer implements CommandLineRunner {
             User admin = userRepository.findByUsername("admin")
                     .orElse(userRepository.findAll().get(0));
 
-            Lab lab = labRepository.findAll().get(1); // Physics Lab
-            LabWork labWork = labWorkRepository.findAll().get(0);
+            List<Lab> labs = labRepository.findAll();
+            if (labs.isEmpty()) {
+                log.warn("No labs found, skipping reservations initialization");
+                return;
+            }
+
+            List<LabWork> labWorks = labWorkRepository.findAll();
+            if (labWorks.isEmpty()) {
+                log.warn("No lab works found, skipping reservations initialization");
+                return;
+            }
+
             List<Equipment> equipment = equipmentRepository.findAll();
+            if (equipment.isEmpty()) {
+                log.warn("No equipment found, skipping reservations initialization");
+                return;
+            }
+
+            Lab lab = labs.size() > 1 ? labs.get(1) : labs.get(0);
+            LabWork labWork = labWorks.get(0);
 
             // Reservation 1 - PENDING (аналог Order який очікує approve)
             Reservation r1 = Reservation.builder()
                     .lab(lab)
                     .user(student)
                     .labWork(labWork)
-                    .equipment(List.of(equipment.get(0), equipment.get(1)))
+                    .equipment(equipment.size() >= 2
+                            ? List.of(equipment.get(0), equipment.get(1))
+                            : List.of(equipment.get(0)))
                     .startTime(LocalDateTime.now().plusDays(2))
                     .endTime(LocalDateTime.now().plusDays(2).plusHours(3))
                     .purpose("Виконання лабораторної роботи №1")
@@ -257,7 +287,9 @@ public class DataInitializer implements CommandLineRunner {
             Reservation r3 = Reservation.builder()
                     .lab(lab)
                     .user(student)
-                    .equipment(new ArrayList<>(List.of(equipment.get(3))))
+                    .equipment(new ArrayList<>(List.of(equipment.size() >= 4
+                            ? equipment.get(3)
+                            : equipment.get(equipment.size() > 1 ? 1 : 0))))
                     .startTime(LocalDateTime.now().plusDays(7))
                     .endTime(LocalDateTime.now().plusDays(7).plusHours(4))
                     .purpose("Дослідження генератора функцій")
