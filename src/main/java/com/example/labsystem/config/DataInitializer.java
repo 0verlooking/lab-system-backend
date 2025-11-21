@@ -115,8 +115,14 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initEquipment() {
         if (equipmentRepository.count() == 0) {
-            Lab lab1 = labRepository.findAll().get(0);
-            Lab lab2 = labRepository.findAll().get(1);
+            List<Lab> labs = labRepository.findAll();
+            if (labs.isEmpty()) {
+                log.warn("No labs found, skipping equipment initialization");
+                return;
+            }
+
+            Lab lab1 = labs.get(0);
+            Lab lab2 = labs.size() > 1 ? labs.get(1) : lab1;
 
             // Обладнання з documentationLink (аналог link з microlab_v2)
             Equipment eq1 = Equipment.builder()
@@ -169,7 +175,7 @@ public class DataInitializer implements CommandLineRunner {
                     .build();
             equipmentRepository.save(eq5);
 
-            log.info("Created 5 equipment items with documentation links");
+            log.info("Created 5 equipment items with documentation links (using {} labs)", labs.size());
         }
     }
 
