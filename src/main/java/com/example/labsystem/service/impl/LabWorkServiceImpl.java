@@ -4,6 +4,7 @@ import com.example.labsystem.domain.lab.Equipment;
 import com.example.labsystem.domain.labwork.LabWork;
 import com.example.labsystem.domain.labwork.LabWorkStatus;
 import com.example.labsystem.domain.user.User;
+import com.example.labsystem.domain.user.UserRole;
 import com.example.labsystem.dto.request.LabWorkCreateRequest;
 import com.example.labsystem.dto.request.LabWorkUpdateRequest;
 import com.example.labsystem.dto.response.LabWorkResponse;
@@ -91,10 +92,10 @@ public class LabWorkServiceImpl implements LabWorkService {
         LabWork labWork = labWorkRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("LabWork not found"));
 
-        // Перевірка що користувач - автор
+        // Перевірка прав доступу: тільки автор або адміністратор/менеджер можуть оновлювати
         User currentUser = getCurrentUser();
-        if (!labWork.getAuthor().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You can only update your own lab works");
+        if (!canModifyLabWork(labWork, currentUser)) {
+            throw new RuntimeException("You don't have permission to update this lab work");
         }
 
         if (request.getTitle() != null) {
@@ -122,10 +123,10 @@ public class LabWorkServiceImpl implements LabWorkService {
         LabWork labWork = labWorkRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("LabWork not found"));
 
-        // Перевірка що користувач - автор
+        // Перевірка прав доступу: тільки автор або адміністратор/менеджер можуть видаляти
         User currentUser = getCurrentUser();
-        if (!labWork.getAuthor().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You can only delete your own lab works");
+        if (!canModifyLabWork(labWork, currentUser)) {
+            throw new RuntimeException("You don't have permission to delete this lab work");
         }
 
         labWorkRepository.delete(labWork);
@@ -136,6 +137,21 @@ public class LabWorkServiceImpl implements LabWorkService {
         String username = auth.getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
+    }
+
+    /**
+     * Перевіряє чи може користувач модифікувати лабораторну роботу.
+     * ADMIN та LAB_MANAGER можуть модифікувати будь-які роботи.
+     * STUDENT може модифікувати тільки свої роботи.
+     */
+    private boolean canModifyLabWork(LabWork labWork, User user) {
+        // Адміністратори та менеджери можуть модифікувати будь-які роботи
+        if (user.getRole() == UserRole.ADMIN || user.getRole() == UserRole.LAB_MANAGER) {
+            return true;
+        }
+
+        // Студенти можуть модифікувати тільки свої роботи
+        return labWork.getAuthor().getId().equals(user.getId());
     }
 
     private LabWorkResponse toResponse(LabWork labWork) {

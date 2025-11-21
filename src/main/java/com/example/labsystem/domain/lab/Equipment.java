@@ -42,7 +42,7 @@ public class Equipment {
     private String documentationLink;
 
     @ManyToOne
-    @JoinColumn(name = "lab_id")
+    @JoinColumn(name = "lab_id", nullable = true)
     private Lab lab;
 
     @Column(length = 1000)
